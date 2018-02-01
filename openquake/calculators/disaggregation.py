@@ -259,7 +259,8 @@ producing too small PoEs.'''
                 sources = sum([grp.sources for grp in groups], [])
                 rlzs_by_gsim = self.rlzs_assoc.get_rlzs_by_gsim(trt, sm_id)
                 cmaker = ContextMaker(
-                    rlzs_by_gsim, src_filter.integration_distance)
+                    rlzs_by_gsim, src_filter.integration_distance,
+                    self.oqparam.rupture_distance)
                 for block in csm.split_in_blocks(maxweight, sources):
                     all_args.append(
                         (src_filter, block, cmaker, iml4, trti, self.bin_edges,

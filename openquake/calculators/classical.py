@@ -162,7 +162,8 @@ class PSHACalculator(base.HazardCalculator):
             tiles = self.sitecol.split_in_tiles(num_tiles)
         else:
             tiles = [self.sitecol]
-        param = dict(truncation_level=oq.truncation_level, imtls=oq.imtls)
+        param = dict(truncation_level=oq.truncation_level, imtls=oq.imtls,
+                     rupture_distance=oq.rupture_distance)
         for tile_i, tile in enumerate(tiles, 1):
             num_tasks = 0
             num_sources = 0

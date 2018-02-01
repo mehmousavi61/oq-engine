@@ -86,7 +86,7 @@ def pmap_from_grp(group, src_filter, gsims, param, monitor=Monitor()):
     with GroundShakingIntensityModel.forbid_instantiation():
         imtls = param['imtls']
         trunclevel = param.get('truncation_level')
-        cmaker = ContextMaker(gsims, maxdist)
+        cmaker = ContextMaker(gsims, maxdist, param['rupture_distance'])
         ctx_mon = monitor('make_contexts', measuremem=False)
         poe_mon = monitor('get_poes', measuremem=False)
         pmap = ProbabilityMap(len(imtls.array), len(gsims))
@@ -129,7 +129,7 @@ def pmap_from_trt(sources, src_filter, gsims, param, monitor=Monitor()):
     with GroundShakingIntensityModel.forbid_instantiation():
         imtls = param['imtls']
         trunclevel = param.get('truncation_level')
-        cmaker = ContextMaker(gsims, maxdist)
+        cmaker = ContextMaker(gsims, maxdist, param['rupture_distance'])
         ctx_mon = monitor('make_contexts', measuremem=False)
         poe_mon = monitor('get_poes', measuremem=False)
         pmap = AccumDict({grp_id: ProbabilityMap(len(imtls.array), len(gsims))
@@ -153,7 +153,7 @@ def pmap_from_trt(sources, src_filter, gsims, param, monitor=Monitor()):
 
 def calc_hazard_curves(
         groups, ss_filter, imtls, gsim_by_trt, truncation_level=None,
-        apply=Sequential.apply):
+        apply=Sequential.apply, rupture_distance='rjb'):
     """
     Compute hazard curves on a list of sites, given a set of seismic source
     groups and a dictionary of ground shaking intensity models (one per
@@ -178,8 +178,10 @@ def calc_hazard_curves(
     :param truncation_level:
         Float, number of standard deviations for truncation of the intensity
         distribution.
-    :param maximum_distance:
-        The integration distance, if any
+    :param apply:
+        The apply function to use, default Sequential.apply
+    :param rupture_distance:
+        The rupture distance, 'rjb' or 'rrup'
     :returns:
         An array of size N, where N is the number of sites, which elements
         are records with fields given by the intensity measure types; the
@@ -202,7 +204,8 @@ def calc_hazard_curves(
         ss_filter = SourceFilter(sitecol, {})
 
     imtls = DictArray(imtls)
-    param = dict(imtls=imtls, truncation_level=truncation_level)
+    param = dict(imtls=imtls, truncation_level=truncation_level,
+                 rupture_distance=rupture_distance)
     pmap = ProbabilityMap(len(imtls.array), 1)
     # Processing groups with homogeneous tectonic region
     gsim = gsim_by_trt[groups[0][0].tectonic_region_type]

@@ -118,9 +118,11 @@ class ContextMaker(object):
     """
     REQUIRES = ['DISTANCES', 'SITES_PARAMETERS', 'RUPTURE_PARAMETERS']
 
-    def __init__(self, gsims, maximum_distance=IntegrationDistance(None)):
+    def __init__(self, gsims, maximum_distance=IntegrationDistance(None),
+                 rupture_distance='rjb'):
         self.gsims = gsims
         self.maximum_distance = maximum_distance
+        self.rupture_distance = rupture_distance
         for req in self.REQUIRES:
             reqset = set()
             for gsim in gsims:
@@ -160,7 +162,7 @@ class ContextMaker(object):
             If any of declared required distance parameters is unknown.
         """
         dctx = DistancesContext()
-        for param in self.REQUIRES_DISTANCES | set(['rjb']):
+        for param in self.REQUIRES_DISTANCES | set([self.rupture_distance]):
             if param in dist_dict:  # already computed distances
                 distances = dist_dict[param]
             else:
@@ -265,9 +267,10 @@ class ContextMaker(object):
         """
         rctx = self.make_rupture_context(rupture)
         sites, distances = self.maximum_distance.get_closest(
-            site_collection, rupture, 'rjb', filter)
+            site_collection, rupture, self.rupture_distance, filter)
         sctx = self.make_sites_context(sites)
-        dctx = self.make_distances_context(sites, rupture, {'rjb': distances})
+        dctx = self.make_distances_context(
+            sites, rupture, {self.rupture_distance: distances})
         return (sctx, rctx, dctx)
 
     def filter_ruptures(self, src, sites):

@@ -117,6 +117,7 @@ class OqParam(valid.ParamSet):
     risk_investigation_time = valid.Param(valid.positivefloat, None)
     rupture_mesh_spacing = valid.Param(valid.positivefloat)
     ruptures_per_block = valid.Param(valid.positiveint, 1000)
+    rupture_distance = valid.Param(valid.Choice('rjb', 'rrup'), 'rjb')
     complex_fault_mesh_spacing = valid.Param(
         valid.NoneOr(valid.positivefloat), None)
     return_periods = valid.Param(valid.positiveints, None)
