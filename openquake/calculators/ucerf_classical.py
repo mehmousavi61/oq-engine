@@ -161,7 +161,8 @@ class UcerfPSHACalculator(classical.PSHACalculator):
         acc.calc_times = []
         acc.eff_ruptures = AccumDict()  # grp_id -> eff_ruptures
         acc.bb_dict = {}  # just for API compatibility
-        param = dict(imtls=oq.imtls, truncation_level=oq.truncation_level)
+        param = dict(imtls=oq.imtls, truncation_level=oq.truncation_level,
+                     rupture_distance=oq.rupture_distance)
         for sm in self.csm.source_models:  # one branch at the time
             grp_id = sm.ordinal
             gsims = self.gsims_by_grp[grp_id]
