@@ -360,6 +360,11 @@ class SourceFilter(object):
         maxdist = self.integration_distance(src.tectonic_region_type, mag)
         return fix_bounding_box_idl(src.get_bounding_box(maxdist), self.idl)
 
+    def get_sids_within(self, bbox):
+        mask = (bbox[0] <= self.sitecol.lons <= bbox[2]) * (
+            bbox[1] <= self.sitecol.lats <= bbox[3])
+        return mask.nonzero()[0]
+
     def get_rectangle(self, src):
         """
         :param src: a source object
@@ -402,13 +407,7 @@ class SourceFilter(object):
                 yield src, sites
             elif self.use_rtree:  # Rtree filtering, used in the controller
                 box = self.get_affected_box(src)
-                sids = numpy.array(sorted(self.index.intersection(box)))
-                if len(set(sids)) < len(sids):
-                    # MS: sanity check against rtree bugs; what happened to me
-                    # is that by following the advice in http://toblerity.org/rtree/performance.html#use-stream-loading
-                    # self.index.intersection(box) started reporting duplicate
-                    # and wrong sids!
-                    raise ValueError('sids=%s' % sids)
+                sids = self.get_sids_within(box)
                 if len(sids):
                     src.nsites = len(sids)
                     yield src, SiteCollection.filtered(sids, sites)
