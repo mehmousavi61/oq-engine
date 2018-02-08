@@ -60,18 +60,13 @@ the index can be compensed. Finally, there is a function
 """
 import sys
 import math
-import logging
 import collections
 from contextlib import contextmanager
 import numpy
 from scipy.interpolate import interp1d
-try:
-    import rtree
-except ImportError:
-    rtree = None
 from openquake.baselib.python3compat import raise_
 from openquake.hazardlib.site import SiteCollection
-from openquake.hazardlib.geo.utils import fix_bounding_box_idl, fix_lons_idl
+from openquake.hazardlib.geo.utils import fix_lons_idl
 
 KM_TO_DEGREES = 0.0089932  # 1 degree == 111 km
 DEGREES_TO_RAD = 0.01745329252  # 1 radians = 57.295779513 degrees
@@ -307,20 +302,14 @@ class IntegrationDistance(collections.Mapping):
 
 class SourceFilter(object):
     """
-    The SourceFilter uses the rtree library if available. The index is
-    generated at instantiation time and kept in memory. The filter should be
-    instantiated only once per calculation, after the site collection is
-    known. It should be used as follows::
+    The SourceFilter should be used as follows::
 
       ss_filter = SourceFilter(sitecol, integration_distance)
       for src, sites in ss_filter(sources):
          do_something(...)
 
     As a side effect, sets the `.nsites` attribute of the source, i.e. the
-    number of sites within the integration distance. Notice that SourceFilter
-    instances can be pickled, but when unpickled the `use_rtree` flag is set to
-    false and the index is lost: the reason is that libspatialindex indices
-    cannot be properly pickled (https://github.com/Toblerity/rtree/issues/65).
+    number of sites within the integration distance.
 
     :param sitecol:
         :class:`openquake.hazardlib.site.SiteCollection` instance (or None)
@@ -328,26 +317,16 @@ class SourceFilter(object):
         Threshold distance in km, this value gets passed straight to
         :meth:`openquake.hazardlib.source.base.BaseSeismicSource.filter_sites_by_distance_to_source`
         which is what is actually used for filtering.
-    :param use_rtree:
-        by default True, i.e. try to use the rtree module if available
     """
-    def __init__(self, sitecol, integration_distance, use_rtree=True):
+    def __init__(self, sitecol, integration_distance):
         self.integration_distance = (
             IntegrationDistance(integration_distance)
             if isinstance(integration_distance, dict)
             else integration_distance)
         self.sitecol = sitecol
-        self.use_rtree = use_rtree and rtree and (
-            integration_distance and sitecol is not None and
-            sitecol.at_sea_level())
         if sitecol is not None:
             fixed_lons, self.idl = fix_lons_idl(sitecol.lons)
-        if self.use_rtree:
-            self.index = rtree.index.Index()
-            for sid, lon, lat in zip(sitecol.sids, fixed_lons, sitecol.lats):
-                self.index.insert(sid, (lon, lat, lon, lat))
-        if sitecol is not None and rtree is None:
-            logging.info('Using distance filtering [no rtree]')
+        self.raw = True
 
     def get_affected_box(self, src):
         """
@@ -358,11 +337,15 @@ class SourceFilter(object):
         """
         mag = src.get_min_max_mag()[1]
         maxdist = self.integration_distance(src.tectonic_region_type, mag)
-        return fix_bounding_box_idl(src.get_bounding_box(maxdist), self.idl)
+        return src.get_bounding_box(maxdist)
 
-    def get_sids_within(self, bbox):
-        mask = (bbox[0] <= self.sitecol.lons <= bbox[2]) * (
-            bbox[1] <= self.sitecol.lats <= bbox[3])
+    def get_sids_within(self, min_lon, min_lat, max_lon, max_lat):
+        """
+        :returns: the site IDs within the given bounding box
+        """
+        mask = (
+            (min_lon <= self.sitecol.lons) * (self.sitecol.lons <= max_lon) *
+            (min_lat <= self.sitecol.lats) * (self.sitecol.lats <= max_lat))
         return mask.nonzero()[0]
 
     def get_rectangle(self, src):
@@ -392,7 +375,7 @@ class SourceFilter(object):
         for site in self.sitecol:
             bb = self.integration_distance.get_bounding_box(
                 site.location.longitude, site.location.latitude, trt, mag)
-            bbs.append(fix_bounding_box_idl(bb, self.idl))
+            bbs.append(bb)
         return bbs
 
     def __call__(self, sources, sites=None):
@@ -405,9 +388,8 @@ class SourceFilter(object):
                 if sites is not None:
                     src.nsites = len(sites)
                 yield src, sites
-            elif self.use_rtree:  # Rtree filtering, used in the controller
-                box = self.get_affected_box(src)
-                sids = self.get_sids_within(box)
+            elif self.raw:  # Rtree filtering, used in the controller
+                sids = self.get_sids_within(*self.get_affected_box(src))
                 if len(sids):
                     src.nsites = len(sids)
                     yield src, SiteCollection.filtered(sids, sites)
@@ -424,7 +406,7 @@ class SourceFilter(object):
 
     def __getstate__(self):
         return dict(integration_distance=self.integration_distance,
-                    sitecol=self.sitecol, use_rtree=False)
+                    sitecol=self.sitecol, raw=False)
 
 
 source_site_noop_filter = SourceFilter(None, {})
