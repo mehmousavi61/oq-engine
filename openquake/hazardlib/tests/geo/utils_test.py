@@ -425,17 +425,17 @@ class PlaneFit(unittest.TestCase):
 
 class GeographicObjectsTest(unittest.TestCase):
     def setUp(self):
-        p1 = Point(0.0, 0.1)
-        p2 = Point(0.0, 0.2)
-        p3 = Point(0.0, 0.3)
-        self.points = utils.GeographicObjects([p1, p2, p3])
+        self.p1 = dict(lon=0.0, lat=0.1)
+        self.p2 = dict(lon=0.0, lat=0.2)
+        self.p3 = dict(lon=0.0, lat=0.3)
+        self.points = utils.GeographicObjects([self.p1, self.p2, self.p3])
 
     def test_closest(self):
         point, dist = self.points.get_closest(0.0, 0.21)
-        self.assertEqual(point, Point(0.0, 0.2))
+        self.assertEqual(point, self.p2)
         point, dist = self.points.get_closest(0.0, 0.29)
-        self.assertEqual(point, Point(0.0, 0.3))
+        self.assertEqual(point, self.p3)
 
     def test_exact_point(self):
         point, dist = self.points.get_closest(0.0, 0.2)
-        self.assertEqual(point, Point(0.0, 0.2))
+        self.assertEqual(point, self.p2)

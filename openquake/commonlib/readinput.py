@@ -330,9 +330,9 @@ def get_site_collection(oqparam):
         # associate the site parameters to the mesh
         sitecol = site.SiteCollection.from_points(
             mesh.lons, mesh.lats, mesh.depths)
-        sc, params = geo.utils.GeographicObjects(sm).assoc(
+        _, params = geo.utils.GeographicObjects(sm).assoc(
             sitecol, oqparam.max_site_model_distance, 'warn')
-        for sid, param in zip(sc.sids, params):
+        for sid, param in zip(sitecol.sids, params):
             for name in site_model_dt.names[2:]:  # all names except lon, lat
                 sitecol.array[sid][name] = param[name]
         return sitecol

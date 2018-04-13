@@ -81,16 +81,17 @@ class GeographicObjects(object):
             idx, min_dist = min_idx_dst(self.lons, self.lats, zeros, lon, lat)
         return self.objects[idx], min_dist
 
-    def assoc(self, sitecol, assoc_dist, mode):
+    def assoc(self, sites, assoc_dist, mode):
         """
-        :param: a (filtered) site collection
+        :param sites: a list of sites
         :param assoc_dist: the maximum distance for association
         :param mode: 'strict', 'error', 'warn' or 'ignore'
         :returns: (filtered site collection, filtered objects)
         """
         dic = {}
-        for sid, lon, lat in zip(sitecol.sids, sitecol.lons, sitecol.lats):
-            obj, distance = self.get_closest(lon, lat)
+        for site in sites:
+            sid = site.sid
+            obj, distance = self.get_closest(site.lon, site.lat)
             if assoc_dist is None:
                 dic[sid] = obj  # associate all
             elif distance <= assoc_dist:
@@ -104,12 +105,12 @@ class GeographicObjects(object):
             elif mode == 'strict':
                 raise SiteAssociationError(
                     'There is nothing closer than %s km '
-                    'to site (%s %s)' % (assoc_dist, lon, lat))
+                    'to site (%s %s)' % (assoc_dist, site.lon, site.lat))
         if not dic and mode == 'error':
             raise SiteAssociationError(
                 'No sites could be associated within %s km' % assoc_dist)
-        return (sitecol.filtered(dic),
-                numpy.array([dic[sid] for sid in sorted(dic)]))
+        sids = sorted(dic)
+        return sids, numpy.array([dic[sid] for sid in sids])
 
 
 def clean_points(points):
