@@ -21,7 +21,6 @@ Module :mod:`openquake.hazardlib.geo.utils` contains functions that are common
 to several geographical primitives and some other low-level spatial operations.
 """
 import logging
-import operator
 import collections
 try:
     import rtree
@@ -45,20 +44,16 @@ class SiteAssociationError(Exception):
 
 class GeographicObjects(object):
     """
-    Store a collection of geographic objects, i.e. objects with longitudes
-    and latitudes. By default extracts the coordinates from the attributes
-    .lon and .lat, but you can provide your own getters. It is possible
-    to extract the closest object to a given location by calling the
-    method .get_closest(lon, lat).
+    Store a collection of geographic objects, i.e. objects with lon, lat
+    keys. It is possible to extract the closest object to a given location
+    by calling the method .get_closest(lon, lat).
     """
-    def __init__(self, objects, getlon=operator.attrgetter('lon'),
-                 getlat=operator.attrgetter('lat')):
+    def __init__(self, objects):
         self.objects = list(objects)
         lons, lats = [], []
         for i, obj in enumerate(self.objects):
-            lon, lat = getlon(obj), getlat(obj)
-            lons.append(lon)
-            lats.append(lat)
+            lons.append(obj['lon'])
+            lats.append(obj['lat'])
         self.lons, self.lats = numpy.array(lons), numpy.array(lats)
         if rtree:
             self.index = rtree.index.Index()
@@ -86,7 +81,7 @@ class GeographicObjects(object):
             idx, min_dist = min_idx_dst(self.lons, self.lats, zeros, lon, lat)
         return self.objects[idx], min_dist
 
-    def assoc(self, sitecol, assoc_dist, mode='error'):
+    def assoc(self, sitecol, assoc_dist, mode):
         """
         :param: a (filtered) site collection
         :param assoc_dist: the maximum distance for association
@@ -102,8 +97,8 @@ class GeographicObjects(object):
                 dic[sid] = obj  # associate within
             elif mode == 'warn':
                 dic[sid] = obj  # associate outside
-                logging.warn('Association to %s km from site (%s %s)',
-                             distance, lon, lat)
+                logging.warn('(%s %s) associated to site %d, distance=%d km',
+                             obj['lon'], obj['lat'], sid, distance)
             elif mode == 'ignore':
                 pass  # do not associate
             elif mode == 'strict':

@@ -50,7 +50,7 @@ U16 = numpy.uint16
 U32 = numpy.uint32
 U64 = numpy.uint64
 
-Site = collections.namedtuple('Site', 'sid lon lat')
+
 stored_event_dt = numpy.dtype([
     ('eid', U64), ('rup_id', U32), ('grp_id', U16), ('year', U32),
     ('ses', U32), ('sample', U32)])
@@ -328,11 +328,9 @@ def get_site_collection(oqparam):
             return site.SiteCollection.from_points(
                 sm['lon'], sm['lat'], depth, sm)
         # associate the site parameters to the mesh
-        site_model_params = geo.utils.GeographicObjects(
-            sm, operator.itemgetter('lon'), operator.itemgetter('lat'))
         sitecol = site.SiteCollection.from_points(
             mesh.lons, mesh.lats, mesh.depths)
-        sc, params = site_model_params.assoc(
+        sc, params = geo.utils.GeographicObjects(sm).assoc(
             sitecol, oqparam.max_site_model_distance, 'warn')
         for sid, param in zip(sc.sids, params):
             for name in site_model_dt.names[2:]:  # all names except lon, lat
@@ -639,7 +637,7 @@ def get_sitecol_assetcol(oqparam, haz_sitecol):
         sids = set(haz_sitecol.sids)
         # associate the assets to the hazard sites
         siteobjects = geo.utils.GeographicObjects(
-            Site(sid, lon, lat) for sid, lon, lat in
+            dict(sid=sid, lon=lon, lat=lat) for sid, lon, lat in
             zip(haz_sitecol.sids, haz_sitecol.lons, haz_sitecol.lats))
         assets_by_sid = AccumDict(accum=[])
         tot_assets = 0
@@ -647,9 +645,9 @@ def get_sitecol_assetcol(oqparam, haz_sitecol):
             tot_assets += len(assets)
             lon, lat = assets[0].location
             obj, distance = siteobjects.get_closest(lon, lat)
-            if obj.sid in sids and distance <= haz_distance:
+            if obj['sid'] in sids and distance <= haz_distance:
                 # keep the assets, otherwise discard them
-                assets_by_sid += {obj.sid: list(assets)}
+                assets_by_sid += {obj['sid']: list(assets)}
         if not assets_by_sid:
             raise geo.utils.SiteAssociationError(
                 'Could not associate any site to any assets within the '
